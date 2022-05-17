@@ -1,0 +1,44 @@
+
+const worker = new Worker(generateWorkerURL());
+worker.onmessage = e => {
+  // generate a blobURI from the Blob
+  const url = URL.createObjectURL(e.data.blob);
+  // use it
+  document.body.style.backgroundImage = `url(${url})`;
+};
+
+const canvas = document.createElement('canvas');
+canvas.width = canvas.height = 100;
+const offscreen = canvas.transferControlToOffscreen();
+
+worker.postMessage({canvas: offscreen}, [offscreen]);
+
+function generateWorkerURL() {
+  const scr = document.querySelector('[type="worker-script"]');
+  const cont = scr.textContent;
+  const blob = new Blob([cont], {type: 'text/javascript'});
+  return URL.createObjectURL(blob);
+}
+
+body{width: 100vw; height: 100vh; margin: 0}
+<script type="worker-script">
+  onmessage = e => {
+    const canvas = e.data.canvas;
+    // red squares 
+    const gl = canvas.getContext('webgl');
+    gl.viewport(0, 0,
+    gl.drawingBufferWidth, gl.drawingBufferHeight);
+    gl.enable(gl.SCISSOR_TEST);
+    gl.scissor(20, 20, 60, 60);
+
+    gl.clearColor(1.0, 0.0, 0.0, 1.0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    // export as Blob
+    (canvas.convertToBlob || canvas.toBlob).call(canvas)
+    .then(blob => {
+      postMessage({blob});
+    });
+
+  }
+
+</script>
